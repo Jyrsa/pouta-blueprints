@@ -14,6 +14,7 @@ from pouta_blueprints.server import app, restful
 from pouta_blueprints.utils import requires_admin, memoize
 from pouta_blueprints.tasks import run_update, update_user_connectivity
 from pouta_blueprints.views.commons import auth
+from pouta_blueprints.rules import apply_rules_instances
 
 instances = FlaskBlueprint('instances', __name__)
 
@@ -74,15 +75,18 @@ class InstanceList(restful.Resource):
     def get(self):
         user = g.user
         args = self.parser.parse_args()
-        q = Instance.query
-        if not user.is_admin or args.get('show_only_mine'):
-            q = q.filter_by(user_id=user.id)
-        if not args.get('show_deleted'):
-            q = q.filter(Instance.state != Instance.STATE_DELETED)
-        if args.get('offset'):
-            q = q.offset(args.get('offset'))
-        if args.get('limit'):
-            q = q.limit(args.get('limit'))
+
+        # q = Instance.query
+        # if not user.is_admin or args.get('show_only_mine'):
+        #    q = q.filter_by(user_id=user.id)
+        # if not args.get('show_deleted'):
+        #    q = q.filter(Instance.state != Instance.STATE_DELETED)
+        # if args.get('offset'):
+        #    q = q.offset(args.get('offset'))
+        # if args.get('limit'):
+        #    q = q.limit(args.get('limit'))
+
+        q = apply_rules_instances(user, args)
         instances = q.all()
 
         get_blueprint = memoize(query_blueprint)
@@ -173,9 +177,12 @@ class InstanceView(restful.Resource):
     @marshal_with(instance_fields)
     def get(self, instance_id):
         user = g.user
-        query = Instance.query.filter_by(id=instance_id)
-        if not user.is_admin:
-            query = query.filter_by(user_id=user.id)
+        group = user.group
+#        query = Instance.query.filter_by(id=instance_id)
+#        if not user.is_admin:
+#            query = query.filter_by(user_id=user.id)
+        args = {'instance_id': instance_id}
+        query = apply_rules_instances(user, group, args)
         instance = query.first()
         if not instance:
             abort(404)
