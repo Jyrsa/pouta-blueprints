@@ -56,6 +56,7 @@ def requires_admin(f):
 
     return decorated
 
+
 def requires_group_owner_or_admin(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -64,6 +65,7 @@ def requires_group_owner_or_admin(f):
         return f(*args, **kwargs)
 
     return decorated
+
 
 def memoize(func):
     """

@@ -144,7 +144,9 @@ class User(db.Model):
         return self.email
 
 
-group_user = db.Table('groups_users', db.Column('group_id', db.String, db.ForeignKey('groups.id')), db.Column('user_id', db.String, db.ForeignKey('users.id')))
+group_user = db.Table('groups_users', db.Column('group_id', db.String(32), db.ForeignKey('groups.id')), db.Column('user_id', db.String(32), db.ForeignKey('users.id')), db.PrimaryKeyConstraint('group_id', 'user_id'))
+group_banned_user = db.Table('groups_banned_users', db.Column('group_id', db.String(32), db.ForeignKey('groups.id')), db.Column('user_id', db.String(32), db.ForeignKey('users.id')), db.PrimaryKeyConstraint('group_id', 'user_id'))
+group_owner = db.Table('groups_owners', db.Column('group_id', db.String(32), db.ForeignKey('groups.id')), db.Column('owner_id', db.String(32), db.ForeignKey('users.id')), db.PrimaryKeyConstraint('group_id', 'owner_id'))
 
 
 class Group(db.Model):
@@ -152,13 +154,18 @@ class Group(db.Model):
 
     id = db.Column(db.String(32), primary_key=True)
     name = db.Column(db.String(50))
+    join_code = db.Column(db.String(32))
     description = db.Column(db.Text)
     users = db.relationship("User", secondary=group_user, backref="groups", lazy="dynamic")
+    banned_users = db.relationship("User", secondary=group_banned_user, backref="banned_groups", lazy="dynamic")
+    owners = db.relationship("User", secondary=group_owner, backref="owned_groups", lazy="dynamic")
     blueprints = db.relationship("Blueprint", backref="group", lazy="dynamic")
 
-    def __init__(self, name):
+    def __init__(self, name, join_code, first_owner):
         self.id = uuid.uuid4().hex
         self.name = name
+        self.join_code = join_code
+        self.owners.append(first_owner)
 
 
 class Notification(db.Model):

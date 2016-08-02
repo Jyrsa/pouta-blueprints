@@ -20,9 +20,9 @@ class BlueprintList(restful.Resource):
     @auth.login_required
     @marshal_with(blueprint_fields)
     def get(self):
-        query = apply_rules_blueprints(g.user)
-        query = Blueprint.query.order_by(Blueprint.name)
-
+        user = g.user
+        query = apply_rules_blueprints(user)
+        query = query.join(Group, Blueprint.group).order_by(Group.name)
         results = []
         for blueprint in query.all():
             plugin = Plugin.query.filter_by(id=blueprint.plugin).first()
@@ -33,6 +33,8 @@ class BlueprintList(restful.Resource):
             blueprint_config = blueprint.config
             blueprint_config['name'] = blueprint.name
             blueprint.config = blueprint_config
+            if blueprint.group in user.groups:
+                blueprint.owner = True
 
             results.append(blueprint)
         return results
@@ -52,7 +54,7 @@ class BlueprintList(restful.Resource):
 
         group_id = form.group_id.data
         group = Group.query.filter_by(id=group_id).first()
-        if not user.is_admin and group not in user.groups:
+        if not user.is_admin and group not in user.owned_groups:
             logging.warn("invalid group for the user")
             abort(406)
         blueprint.group_id = group_id
@@ -111,7 +113,7 @@ class BlueprintView(restful.Resource):
         blueprint = Blueprint.query.filter_by(id=blueprint_id).first()
         if not blueprint:
             abort(404)
-        if not user.is_admin and blueprint.group not in user.groups:
+        if not user.is_admin and blueprint.group not in user.owned_groups:
             logging.warn("invalid group for the user")
             abort(406)
 
